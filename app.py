@@ -6,7 +6,7 @@ from langchain.prompts import PromptTemplate
 from transformers import pipeline
 from langchain.llms import HuggingFacePipeline
 
-# Dokumentumok
+# 📄 Dokumentumok
 docs = [
     "The RAG model combines retrieval and generation.",
     "Google Colab is a cloud-based Python environment.",
@@ -16,41 +16,50 @@ docs = [
     "We use for this project lot of python library such as numpy, pandas, matplotlib, seaborn"
 ]
 
-# Embedding modell
-embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+# ⚙️ Cache-elt embedding modell
+@st.cache_resource
+def load_embeddings():
+    return HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-# Vector store
-db = FAISS.from_texts(docs, embeddings)
+embeddings = load_embeddings()
 
-# LLM pipeline
-llm_pipeline = pipeline(
-    "text2text-generation",
-    model="google/flan-t5-base",
-    max_new_tokens=100
-)
-llm = HuggingFacePipeline(pipeline=llm_pipeline)
+# 📦 Cache-elt vector store
+@st.cache_resource
+def build_vector_store(docs, embeddings):
+    return FAISS.from_texts(docs, embeddings)
 
-# Prompt sablon
+db = build_vector_store(docs, embeddings)
+
+# 🤖 Cache-elt LLM pipeline
+@st.cache_resource
+def load_llm():
+    pipe = pipeline("text2text-generation", model="google/flan-t5-base", max_new_tokens=100)
+    return HuggingFacePipeline(pipeline=pipe)
+
+llm = load_llm()
+
+# 🧠 Prompt sablon
 prompt_template = """Answer the question based on the context.
 
 {context}
 
 Question: {question}
 Answer:"""
-prompt = PromptTemplate(
-    template=prompt_template,
-    input_variables=["context", "question"]
-)
+prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
 
-# QA lánc
-qa = RetrievalQA.from_chain_type(
-    llm=llm,
-    retriever=db.as_retriever(),
-    chain_type="stuff",
-    chain_type_kwargs={"prompt": prompt}
-)
+# 🔍 Cache-elt QA lánc
+@st.cache_resource
+def build_qa_chain(llm, db, prompt):
+    return RetrievalQA.from_chain_type(
+        llm=llm,
+        retriever=db.as_retriever(),
+        chain_type="stuff",
+        chain_type_kwargs={"prompt": prompt}
+    )
 
-# Streamlit UI
+qa = build_qa_chain(llm, db, prompt)
+
+# 🎯 Streamlit UI
 st.title("🔍 LangChain QA App")
 st.write("Kérdezz bármit a projekt dokumentumaiból!")
 
