@@ -17,24 +17,18 @@ docs = [
 ]
 
 # Embedding modell
-@st.cache_resource
-def load_embeddings():
-    return HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 # Vector store
-@st.cache_resource
-def load_vectorstore(embeddings):
-    return FAISS.from_texts(docs, embeddings)
+db = FAISS.from_texts(docs, embeddings)
 
 # LLM pipeline
-@st.cache_resource
-def load_llm():
-    llm_pipeline = pipeline(
-        "text2text-generation",
-        model="google/flan-t5-base",
-        max_new_tokens=100
-    )
-    return HuggingFacePipeline(pipeline=llm_pipeline)
+llm_pipeline = pipeline(
+    "text2text-generation",
+    model="google/flan-t5-base",
+    max_new_tokens=100
+)
+llm = HuggingFacePipeline(pipeline=llm_pipeline)
 
 # Prompt sablon
 prompt_template = """Answer the question based on the context.
@@ -49,14 +43,12 @@ prompt = PromptTemplate(
 )
 
 # QA lánc
-@st.cache_resource
-def load_qa(llm, db):
-    return RetrievalQA.from_chain_type(
-        llm=llm,
-        retriever=db.as_retriever(),
-        chain_type="stuff",
-        chain_type_kwargs={"prompt": prompt}
-    )
+qa = RetrievalQA.from_chain_type(
+    llm=llm,
+    retriever=db.as_retriever(),
+    chain_type="stuff",
+    chain_type_kwargs={"prompt": prompt}
+)
 
 # Streamlit UI
 st.title("🔍 LangChain QA App")
@@ -65,11 +57,6 @@ st.write("Kérdezz bármit a projekt dokumentumaiból!")
 user_query = st.text_input("Írd be a kérdésed:", placeholder="Pl. which library use for this project")
 
 if user_query:
-    embeddings = load_embeddings()
-    db = load_vectorstore(embeddings)
-    llm = load_llm()
-    qa = load_qa(llm, db)
-
     with st.spinner("Gondolkodom..."):
         answer = qa.run(user_query)
 
