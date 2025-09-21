@@ -16,19 +16,13 @@ docs = [
     "We use for this project lot of python library such as numpy, pandas, matplotlib, seaborn"
 ]
 
-# ⚙️ Cache-elt embedding modell
-@st.cache_resource
-def load_embeddings():
-    return HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-
-embeddings = load_embeddings()
-
 # 📦 Cache-elt vector store
 @st.cache_resource
-def build_vector_store(docs, embeddings):
+def build_vector_store(docs):
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
     return FAISS.from_texts(docs, embeddings)
 
-db = build_vector_store(docs, embeddings)
+db = build_vector_store(docs)
 
 # 🤖 Cache-elt LLM pipeline
 @st.cache_resource
@@ -38,18 +32,17 @@ def load_llm():
 
 llm = load_llm()
 
-# 🧠 Prompt sablon
-prompt_template = """Answer the question based on the context.
-
-{context}
-
-Question: {question}
-Answer:"""
-prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
-
 # 🔍 Cache-elt QA lánc
 @st.cache_resource
-def build_qa_chain(llm, db, prompt):
+def build_qa_chain():
+    prompt_template = """Answer the question based on the context.
+
+    {context}
+
+    Question: {question}
+    Answer:"""
+    prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
+
     return RetrievalQA.from_chain_type(
         llm=llm,
         retriever=db.as_retriever(),
@@ -57,7 +50,7 @@ def build_qa_chain(llm, db, prompt):
         chain_type_kwargs={"prompt": prompt}
     )
 
-qa = build_qa_chain(llm, db, prompt)
+qa = build_qa_chain()
 
 # 🎯 Streamlit UI
 st.title("🔍 LangChain QA App")
