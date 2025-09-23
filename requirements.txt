@@ -4,3 +4,4 @@ langchain-community
 transformers
 sentence-transformers
 faiss-cpu
+asd
